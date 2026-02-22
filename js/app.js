@@ -106,12 +106,18 @@ function updateLayoutPreview() {
 
   paper.className = `layout-preview-paper lp-paper-${state.layout}`;
 
+  const PICS = [
+    'Pictures/IMG_3815.jpg',
+    'Pictures/IMG_3816.jpg',
+    'Pictures/IMG_3817.jpg',
+    'Pictures/IMG_3818.jpg',
+  ];
+
   // Clone node to retrigger CSS animation on each switch
   const fresh = slots.cloneNode(false);
   fresh.className = `layout-preview-slots lps-${state.layout}`;
-  const svg = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M19 15.5A1.5 1.5 0 0117.5 17h-15A1.5 1.5 0 011 15.5V7.5A1.5 1.5 0 012.5 6H5L6.5 4h7L15 6h2.5A1.5 1.5 0 0119 7.5z"/><circle cx="10" cy="11.5" r="2.5"/></svg>`;
-  fresh.innerHTML = Array.from({ length: info.shots }, () =>
-    `<div class="lps-slot">${svg}</div>`
+  fresh.innerHTML = Array.from({ length: info.shots }, (_, i) =>
+    `<div class="lps-slot"><img src="${PICS[i]}" alt="preview" /></div>`
   ).join('');
   slots.replaceWith(fresh);
 

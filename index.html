@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photobooth</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js"></script>
+</head>
+<body>
+
+<!-- ░░░░░░░░░░░░░░░░░░░ macOS WINDOW ░░░░░░░░░░░░░░░░░░░ -->
+<div class="mac-window">
+
+  <!-- ── Titlebar ─────────────────────────────────────── -->
+  <div class="mac-titlebar">
+    <div class="traffic-lights">
+      <span class="tl tl-red"></span>
+      <span class="tl tl-yellow"></span>
+      <span class="tl tl-green"></span>
+    </div>
+    <span class="window-title" id="window-title">Photobooth</span>
+    <div class="titlebar-right"></div>
+  </div>
+
+  <!-- ── Body: sidebar + panels ─────────────────────── -->
+  <div class="mac-body">
+
+    <!-- ── Sidebar ──────────────────────────────────── -->
+    <aside class="mac-sidebar" id="mac-sidebar">
+
+      <div class="sidebar-section">
+        <p class="sidebar-label">SESSION</p>
+        <button class="sidebar-item active" id="nav-home" data-panel="home">
+          <svg class="si-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">
+            <circle cx="10" cy="10" r="8"/>
+            <circle cx="10" cy="10" r="3"/>
+          </svg>
+          <span>New Session</span>
+        </button>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="sidebar-label">LIBRARY</p>
+        <button class="sidebar-item" id="nav-gallery" data-panel="gallery">
+          <svg class="si-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">
+            <rect x="2" y="2" width="7" height="7" rx="1.5"/>
+            <rect x="11" y="2" width="7" height="7" rx="1.5"/>
+            <rect x="2" y="11" width="7" height="7" rx="1.5"/>
+            <rect x="11" y="11" width="7" height="7" rx="1.5"/>
+          </svg>
+          <span>All Photos</span>
+        </button>
+      </div>
+
+      <!-- Layout picker — visible only on Home/Camera panels -->
+      <div class="sidebar-section" id="layout-section">
+        <p class="sidebar-label">LAYOUT</p>
+        <div class="sidebar-layouts">
+
+          <button class="sl-card selected" data-layout="strip3">
+            <div class="sl-preview lp-strip3">
+              <div></div><div></div><div></div>
+            </div>
+            <span>Classic Strip</span>
+          </button>
+
+          <button class="sl-card" data-layout="strip4">
+            <div class="sl-preview lp-strip4">
+              <div></div><div></div><div></div><div></div>
+            </div>
+            <span>Tall Strip</span>
+          </button>
+
+          <button class="sl-card" data-layout="single">
+            <div class="sl-preview lp-single">
+              <div></div>
+            </div>
+            <span>Single</span>
+          </button>
+
+          <button class="sl-card" data-layout="grid4">
+            <div class="sl-preview lp-grid4">
+              <div></div><div></div><div></div><div></div>
+            </div>
+            <span>2×2 Grid</span>
+          </button>
+
+          <button class="sl-card" data-layout="wide4">
+            <div class="sl-preview lp-wide4">
+              <div></div><div></div><div></div><div></div>
+            </div>
+            <span>Wide Strip</span>
+          </button>
+
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── Content panels ──────────────────────────── -->
+    <main class="mac-content">
+
+      <!-- ══ HOME PANEL ══════════════════════════════ -->
+      <div id="panel-home" class="panel active">
+        <div class="home-hero">
+          <div class="layout-preview-wrap">
+            <div class="layout-preview-paper lp-paper-strip3" id="layout-preview-paper">
+              <div class="layout-preview-slots lps-strip3" id="layout-preview-slots"></div>
+            </div>
+          </div>
+          <h1 class="hero-title">Ready to shoot?</h1>
+          <p class="hero-sub" id="hero-preview-label">Classic Strip &middot; 3 photos</p>
+          <button id="btn-start" class="mac-btn-primary">Start Session</button>
+        </div>
+      </div>
+
+      <!-- ══ CAMERA PANEL ═════════════════════════════ -->
+      <div id="panel-camera" class="panel">
+        <div class="cam-toolbar">
+          <button id="btn-back-home" class="mac-btn-ghost">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10 3L5 8l5 5"/></svg>
+            Back
+          </button>
+          <div class="cam-toolbar-center">
+            <span id="shot-counter" class="cam-counter">Shot 1 of 3</span>
+            <span id="layout-badge" class="cam-badge"></span>
+          </div>
+          <div class="cam-toolbar-right"></div>
+        </div>
+
+        <div class="cam-body">
+          <div class="video-wrap" id="video-wrap">
+            <video id="webcam" autoplay playsinline muted></video>
+            <div id="duotone-live" class="duotone-live hidden"></div>
+            <div id="countdown-overlay" class="countdown-overlay hidden">
+              <span id="countdown-number"></span>
+            </div>
+            <div id="flash-overlay" class="flash-overlay hidden"></div>
+          </div>
+          <div class="shot-strip" id="shot-strip"></div>
+        </div>
+
+        <div class="cam-footer">
+          <div class="filter-scroll-wrap">
+            <div class="filter-bar" id="camera-filter-bar"></div>
+          </div>
+          <button id="btn-capture" class="shutter-btn" title="Take photo">
+            <span class="shutter-inner"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ RESULT PANEL ══════════════════════════════ -->
+      <div id="panel-result" class="panel">
+        <div class="result-toolbar">
+          <button id="btn-retake" class="mac-btn-ghost">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10 3L5 8l5 5"/></svg>
+            Retake
+          </button>
+          <span class="result-toolbar-title">Your Photos</span>
+          <button id="btn-new-session" class="mac-btn-ghost">New Session</button>
+        </div>
+
+        <div class="result-layout">
+          <!-- canvas -->
+          <div class="result-canvas-area">
+            <canvas id="result-canvas"></canvas>
+          </div>
+          <!-- inspector sidebar -->
+          <div class="result-inspector">
+            <div class="inspector-block">
+              <p class="inspector-label">FILTER</p>
+              <div class="filter-scroll-wrap">
+                <div class="filter-bar vertical" id="result-filter-bar"></div>
+              </div>
+            </div>
+
+            <div class="inspector-divider"></div>
+
+            <div class="inspector-block">
+              <p class="inspector-label">EXPORT</p>
+              <div class="export-stack">
+                <button id="btn-download-png" class="mac-btn-primary full-w">Download PNG</button>
+                <button id="btn-download-jpg" class="mac-btn-secondary full-w">Download JPG</button>
+                <button id="btn-share" class="mac-btn-secondary full-w">Share…</button>
+                <button id="btn-print" class="mac-btn-secondary full-w">Print…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ GALLERY PANEL ════════════════════════════ -->
+      <div id="panel-gallery" class="panel">
+        <div class="gallery-toolbar">
+          <span class="gallery-toolbar-title">All Photos</span>
+          <button id="btn-clear-all" class="mac-btn-destructive">Delete All</button>
+        </div>
+
+        <div id="gallery-empty" class="gallery-empty hidden">
+          <svg viewBox="0 0 64 64" fill="none" width="56" height="56">
+            <rect width="64" height="64" rx="14" fill="#e5e5ea"/>
+            <rect x="10" y="18" width="44" height="28" rx="4" stroke="#8e8e93" stroke-width="2"/>
+            <circle cx="32" cy="32" r="8" stroke="#8e8e93" stroke-width="2"/>
+            <circle cx="46" cy="22" r="3" fill="#8e8e93"/>
+          </svg>
+          <p class="empty-title">No Photos Yet</p>
+          <p class="empty-sub">Complete a session and your photos will appear here.</p>
+          <button id="btn-go-shoot" class="mac-btn-primary">Start a Session</button>
+        </div>
+
+        <div id="gallery-grid" class="gallery-grid hidden"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+
+<!-- ░░ LIGHTBOX MODAL ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+<div id="gallery-modal" class="modal hidden">
+  <div class="modal-backdrop" id="modal-backdrop"></div>
+  <div class="modal-box">
+    <button class="modal-close" id="btn-modal-close">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+        <path d="M1 1l12 12M13 1L1 13"/>
+      </svg>
+    </button>
+    <img id="modal-img" src="" alt="Session photo" />
+    <p id="modal-meta" class="modal-meta"></p>
+    <div class="modal-actions">
+      <button id="btn-modal-download" class="mac-btn-primary">Download</button>
+      <button id="btn-modal-delete" class="mac-btn-destructive">Delete</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ░░ PRINT FRAME ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+<div id="print-frame">
+  <img id="print-img" src="" alt="print" />
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

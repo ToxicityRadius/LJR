@@ -40,6 +40,7 @@ const state = {
   stream:           null,
   captureActive:    false,
   currentSessionId: null,
+  retakeIndex:      null,   // index being retaken, or null for a fresh shot
 };
 
 // --- DOM refs ----------------------------------------------------------------
@@ -81,6 +82,8 @@ function showPanel(name) {
   navGallery.classList.toggle('active', name === 'gallery');
   // Show layout picker only on home/camera
   layoutSection.style.display = (name === 'home' || name === 'camera') ? '' : 'none';
+  // Close shot preview whenever leaving camera
+  if (name !== 'camera') closeShotPreview();
 }
 
 // --- Sidebar Nav -------------------------------------------------------------
@@ -126,12 +129,56 @@ function updateLayoutPreview() {
 
 // --- Layout Picker (sidebar) -------------------------------------------------
 
+let _pendingLayoutCard = null;
+
+function applyLayoutSwitch(card) {
+  document.querySelectorAll('.sl-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  state.layout = card.dataset.layout;
+  updateLayoutPreview();
+
+  // If we’re in the camera panel mid-session, also reset the shot state
+  if (panels.camera.classList.contains('active')) {
+    state.photos        = [];
+    state.captureActive = false;
+    captureBtn.disabled = false;
+    shotStrip.innerHTML = '';
+    closeShotPreview();
+    const cfg = LAYOUTS[state.layout];
+    shotCounter.textContent = `Shot 1 of ${cfg.shots}`;
+    layoutBadge.textContent = cfg.label;
+  }
+}
+
+document.getElementById('btn-confirm-switch').addEventListener('click', () => {
+  document.getElementById('layout-confirm-modal').classList.add('hidden');
+  if (_pendingLayoutCard) applyLayoutSwitch(_pendingLayoutCard);
+  _pendingLayoutCard = null;
+});
+
+document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+  document.getElementById('layout-confirm-modal').classList.add('hidden');
+  _pendingLayoutCard = null;
+});
+
+document.getElementById('layout-confirm-backdrop').addEventListener('click', () => {
+  document.getElementById('layout-confirm-modal').classList.add('hidden');
+  _pendingLayoutCard = null;
+});
+
 document.querySelectorAll('.sl-card').forEach(card => {
   card.addEventListener('click', () => {
-    document.querySelectorAll('.sl-card').forEach(c => c.classList.remove('selected'));
-    card.classList.add('selected');
-    state.layout = card.dataset.layout;
-    updateLayoutPreview();
+    if (card.dataset.layout === state.layout) return; // already selected
+
+    // Show warning only when there are already captured photos
+    if (state.photos.length > 0) {
+      _pendingLayoutCard = card;
+      document.getElementById('confirm-new-layout-name').textContent = LAYOUTS[card.dataset.layout].label;
+      document.getElementById('layout-confirm-modal').classList.remove('hidden');
+      return;
+    }
+
+    applyLayoutSwitch(card);
   });
 });
 
@@ -254,13 +301,63 @@ function captureFrame() {
 }
 
 function addThumbnail(dataURL, index) {
-  const img = document.createElement('img');
+  // Replace existing thumb if retaking, otherwise append
+  const existing = shotStrip.querySelector(`[data-index="${index}"]`);
+  const img = existing || document.createElement('img');
   img.className = 'shot-thumb latest';
   img.src = dataURL;
-  img.alt = `Shot ${index}`;
+  img.alt = `Shot ${index + 1}`;
+  img.dataset.index = index;
   shotStrip.querySelectorAll('.shot-thumb').forEach(t => t.classList.remove('latest'));
-  shotStrip.appendChild(img);
+  if (!existing) shotStrip.appendChild(img);
+
+  // Click thumbnail → open preview
+  img.onclick = () => openShotPreview(index);
 }
+
+// --- Shot Preview ------------------------------------------------------------
+
+function openShotPreview(index) {
+  const overlay = document.getElementById('shot-preview');
+  const previewImg = document.getElementById('shot-preview-img');
+  const previewLabel = document.getElementById('shot-preview-label');
+  previewImg.src = state.photos[index];
+  previewLabel.textContent = `Shot ${index + 1} of ${LAYOUTS[state.layout].shots}`;
+  overlay.classList.remove('hidden');
+  overlay.dataset.index = index;
+}
+
+function closeShotPreview() {
+  document.getElementById('shot-preview').classList.add('hidden');
+}
+
+document.getElementById('btn-keep-shot').addEventListener('click', closeShotPreview);
+
+document.getElementById('btn-retake-shot').addEventListener('click', () => {
+  const overlay = document.getElementById('shot-preview');
+  const index = parseInt(overlay.dataset.index, 10);
+  closeShotPreview();
+
+  // Remove the photo at that index
+  state.photos.splice(index, 1);
+
+  // Remove the thumbnail
+  const thumb = shotStrip.querySelector(`[data-index="${index}"]`);
+  if (thumb) thumb.remove();
+
+  // Re-index remaining thumbnails
+  shotStrip.querySelectorAll('.shot-thumb').forEach((t, i) => {
+    t.dataset.index = i;
+    t.alt = `Shot ${i + 1}`;
+    t.onclick = () => openShotPreview(i);
+  });
+
+  // Update counter so next capture fills the gap
+  const needed = LAYOUTS[state.layout].shots;
+  shotCounter.textContent = `Shot ${state.photos.length + 1} of ${needed}`;
+  captureBtn.disabled = false;
+  state.captureActive = false;
+});
 
 async function takePhoto() {
   if (state.captureActive) return;
@@ -272,7 +369,7 @@ async function takePhoto() {
 
   const dataURL = captureFrame();
   state.photos.push(dataURL);
-  addThumbnail(dataURL, state.photos.length);
+  addThumbnail(dataURL, state.photos.length - 1);
 
   const needed = LAYOUTS[state.layout].shots;
 
